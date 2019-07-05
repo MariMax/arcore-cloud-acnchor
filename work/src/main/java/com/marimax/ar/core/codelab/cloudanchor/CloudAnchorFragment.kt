@@ -16,7 +16,6 @@
 
 package com.marimax.ar.core.codelab.cloudanchor
 
-import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
@@ -30,10 +29,7 @@ import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.HitResult
 import com.google.ar.core.Session
-import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager
-import com.google.ar.core.codelab.cloudanchor.helpers.ResolveDialogFragment
-import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper
-import com.google.ar.core.codelab.cloudanchor.helpers.StorageManager
+import com.google.ar.core.codelab.cloudanchor.helpers.*
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.rendering.ModelRenderable
@@ -53,7 +49,7 @@ class CloudAnchorFragment : ArFragment() {
     private var andyRenderable: ModelRenderable? = null
     private var cloudAnchorManager = CloudAnchorManager()
     private var snackbarHelper = SnackbarHelper()
-    private val storageManager = StorageManager()
+    private var firebaseManager: FirebaseManager? = null
     private var resolveButton: Button? = null
 
     override fun onAttach(context: Context?) {
@@ -62,6 +58,8 @@ class CloudAnchorFragment : ArFragment() {
                 .setSource(context!!, R.raw.andy)
                 .build()
                 .thenAccept { renderable -> andyRenderable = renderable }
+
+        firebaseManager = FirebaseManager(context)
     }
 
     override fun onCreateView(
@@ -160,31 +158,51 @@ class CloudAnchorFragment : ArFragment() {
     private fun onHostedAnchorAvailable(anchor: Anchor) {
         val state = anchor.cloudAnchorState
         if (state == Anchor.CloudAnchorState.SUCCESS) {
-            val shortCode = storageManager.nextShortCode(activity)
-            storageManager.storeUsingShortCode(activity, shortCode, anchor.cloudAnchorId)
-            snackbarHelper.showMessage(activity, "Cloud anchor hosted. ID: $shortCode")
+
+            val callback = object: FirebaseManager.ShortCodeListener {
+                override fun onShortCodeAvailable(shortCode: Int?) {
+                    if (shortCode != null) {
+                        firebaseManager?.storeUsingShortCode(shortCode, anchor.cloudAnchorId)
+                        snackbarHelper.showMessage(activity, "Cloud anchor hosted. ID: $shortCode")
+                    } else {
+                        snackbarHelper.showMessage(activity, "Cloud anchor hosted, but could not get a code from firebase")
+                    }
+                }
+            }
+
+            firebaseManager?.nextShortCode(callback)
+//            val shortCode = storageManager.nextShortCode(activity)
+//            storageManager.storeUsingShortCode(activity, shortCode, anchor.cloudAnchorId)
+//            snackbarHelper.showMessage(activity, "Cloud anchor hosted. ID: $shortCode")
             setNewAnchor(anchor)
         } else {
             snackbarHelper.showMessage(activity, "Error while hosting: $state")
         }
+
+
+
     }
 
     @Synchronized
     private fun onShortCodeEntered(shortCode: Int) {
-        val anchor = storageManager.getCloudAnchorId(activity, shortCode)
-        if (anchor == null || anchor.isEmpty()) {
-            snackbarHelper.showMessage(activity, "A Cloud Anchor ID for the short code $shortCode was not found $anchor")
-            return
-        }
-        resolveButton?.isEnabled = false
+        val cloudIdCallback = object : FirebaseManager.CloudAnchorIdListener {
+            override fun onCloudAnchorIdAvailable(cloudAnchorId: String?) {
+                if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
+                    snackbarHelper.showMessage(activity, "A Cloud Anchor ID for the short code $shortCode was not found")
+                    return
+                }
+                resolveButton?.isEnabled = false
+                val callback = object : CloudAnchorManager.CloudAnchorListener {
+                    override fun onCloudTaskComplete(anchor: Anchor) {
+                        this@CloudAnchorFragment.onResolvedAnchorAvailable(anchor, shortCode)
+                    }
+                }
 
-        val callback = object : CloudAnchorManager.CloudAnchorListener {
-            override fun onCloudTaskComplete(anchor: Anchor) {
-                this@CloudAnchorFragment.onResolvedAnchorAvailable(anchor, shortCode)
+                cloudAnchorManager.resolveCloudAnchor(arSceneView?.session, cloudAnchorId, callback)
+
             }
         }
-
-        cloudAnchorManager.resolveCloudAnchor(arSceneView?.session, anchor, callback)
+        firebaseManager?.getCloudAnchorId(shortCode, cloudIdCallback)
     }
 
     @Synchronized
