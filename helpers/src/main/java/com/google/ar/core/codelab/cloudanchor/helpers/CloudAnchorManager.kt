@@ -54,7 +54,10 @@ class CloudAnchorManager {
      */
     @Synchronized
     fun resolveCloudAnchor(
-            session: Session, anchorId: String, listener: CloudAnchorListener) {
+            session: Session?, anchorId: String, listener: CloudAnchorListener) {
+        if (session == null) {
+            return
+        }
         val newAnchor = session.resolveCloudAnchor(anchorId)
         pendingAnchors[newAnchor] = listener
     }

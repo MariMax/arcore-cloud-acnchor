@@ -118,7 +118,13 @@ class CloudAnchorFragment : ArFragment() {
 
     @Synchronized
     private fun onResolveButtonPressed() {
-        val resolveDialog = ResolveDialogFragment()
+        val callback = object : ResolveDialogFragment.OkListener {
+            override fun onOkPressed(dialogValue: Int) {
+                this@CloudAnchorFragment.onShortCodeEntered(dialogValue);
+            }
+        }
+
+        val resolveDialog = ResolveDialogFragment.createWithOkListener(callback)
         resolveDialog.show(fragmentManager, "Resolve")
     }
 
@@ -155,10 +161,41 @@ class CloudAnchorFragment : ArFragment() {
         val state = anchor.cloudAnchorState
         if (state == Anchor.CloudAnchorState.SUCCESS) {
             val shortCode = storageManager.nextShortCode(activity)
+            storageManager.storeUsingShortCode(activity, shortCode, anchor.cloudAnchorId)
             snackbarHelper.showMessage(activity, "Cloud anchor hosted. ID: $shortCode")
             setNewAnchor(anchor)
         } else {
             snackbarHelper.showMessage(activity, "Error while hosting: $state")
+        }
+    }
+
+    @Synchronized
+    private fun onShortCodeEntered(shortCode: Int) {
+        val anchor = storageManager.getCloudAnchorId(activity, shortCode)
+        if (anchor == null || anchor.isEmpty()) {
+            snackbarHelper.showMessage(activity, "A Cloud Anchor ID for the short code $shortCode was not found $anchor")
+            return
+        }
+        resolveButton?.isEnabled = false
+
+        val callback = object : CloudAnchorManager.CloudAnchorListener {
+            override fun onCloudTaskComplete(anchor: Anchor) {
+                this@CloudAnchorFragment.onResolvedAnchorAvailable(anchor, shortCode)
+            }
+        }
+
+        cloudAnchorManager.resolveCloudAnchor(arSceneView?.session, anchor, callback)
+    }
+
+    @Synchronized
+    private fun onResolvedAnchorAvailable(anchor: Anchor, shortCode: Int) {
+        val state = anchor.cloudAnchorState
+        if (state == Anchor.CloudAnchorState.SUCCESS) {
+            snackbarHelper.showMessage(activity, "Cloud Anchor resolved for $shortCode")
+            setNewAnchor(anchor)
+        } else {
+            snackbarHelper.showMessage(activity, "Error while resolving anchor with code $shortCode. Error $state")
+            resolveButton?.isEnabled = true
         }
     }
 

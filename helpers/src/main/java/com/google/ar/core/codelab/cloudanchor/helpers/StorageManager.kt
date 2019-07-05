@@ -51,7 +51,7 @@ class StorageManager {
      */
     fun getCloudAnchorId(activity: FragmentActivity?, shortCode: Int): String? {
         if (activity == null) {
-            return null
+            return ""
         }
 
         val sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE)
