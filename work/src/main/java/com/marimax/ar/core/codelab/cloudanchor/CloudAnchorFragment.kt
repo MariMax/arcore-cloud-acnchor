@@ -31,6 +31,7 @@ import com.google.ar.core.Config
 import com.google.ar.core.HitResult
 import com.google.ar.core.Session
 import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager
+import com.google.ar.core.codelab.cloudanchor.helpers.ResolveDialogFragment
 import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper
 import com.google.ar.core.codelab.cloudanchor.helpers.StorageManager
 import com.google.ar.sceneform.AnchorNode
@@ -53,6 +54,7 @@ class CloudAnchorFragment : ArFragment() {
     private var cloudAnchorManager = CloudAnchorManager()
     private var snackbarHelper = SnackbarHelper()
     private val storageManager = StorageManager()
+    private var resolveButton: Button? = null
 
     override fun onAttach(context: Context?) {
         super.onAttach(context)
@@ -75,6 +77,9 @@ class CloudAnchorFragment : ArFragment() {
         val clearButton = rootView.findViewById<Button>(R.id.clear_button)
         clearButton.setOnClickListener { onClearButtonPressed() }
 
+        resolveButton = rootView.findViewById<Button>(R.id.resolve_button)
+        resolveButton?.setOnClickListener { onResolveButtonPressed() }
+
         arScene = arSceneView.scene
         arScene?.addOnUpdateListener { cloudAnchorManager.onUpdate() }
         setOnTapArPlaneListener { hitResult, _, _ -> onArPlaneTap(hitResult) }
@@ -89,6 +94,8 @@ class CloudAnchorFragment : ArFragment() {
         }
         val anchor = hitResult.createAnchor()
         setNewAnchor(anchor)
+
+        resolveButton?.isEnabled = false
 
         snackbarHelper.showMessage(activity, "Now hosting an anchor... ")
 
@@ -105,7 +112,14 @@ class CloudAnchorFragment : ArFragment() {
     private fun onClearButtonPressed() {
         // Clear the anchor from the scene.
         cloudAnchorManager.clearListeners()
+        resolveButton?.isEnabled = true
         setNewAnchor(null)
+    }
+
+    @Synchronized
+    private fun onResolveButtonPressed() {
+        val resolveDialog = ResolveDialogFragment()
+        resolveDialog.show(fragmentManager, "Resolve")
     }
 
     // Modify the renderables when a new anchor is available.
