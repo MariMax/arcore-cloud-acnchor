@@ -32,6 +32,7 @@ import com.google.ar.core.HitResult
 import com.google.ar.core.Session
 import com.google.ar.core.codelab.cloudanchor.helpers.CloudAnchorManager
 import com.google.ar.core.codelab.cloudanchor.helpers.SnackbarHelper
+import com.google.ar.core.codelab.cloudanchor.helpers.StorageManager
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.rendering.ModelRenderable
@@ -51,6 +52,7 @@ class CloudAnchorFragment : ArFragment() {
     private var andyRenderable: ModelRenderable? = null
     private var cloudAnchorManager = CloudAnchorManager()
     private var snackbarHelper = SnackbarHelper()
+    private val storageManager = StorageManager()
 
     override fun onAttach(context: Context?) {
         super.onAttach(context)
@@ -138,7 +140,8 @@ class CloudAnchorFragment : ArFragment() {
     private fun onHostedAnchorAvailable(anchor: Anchor) {
         val state = anchor.cloudAnchorState
         if (state == Anchor.CloudAnchorState.SUCCESS) {
-            snackbarHelper.showMessage(activity, "Cloud anchor hosted. ID: " + anchor.cloudAnchorId)
+            val shortCode = storageManager.nextShortCode(activity)
+            snackbarHelper.showMessage(activity, "Cloud anchor hosted. ID: $shortCode")
             setNewAnchor(anchor)
         } else {
             snackbarHelper.showMessage(activity, "Error while hosting: $state")

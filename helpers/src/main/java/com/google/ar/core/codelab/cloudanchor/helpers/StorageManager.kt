@@ -19,12 +19,16 @@ package com.google.ar.core.codelab.cloudanchor.helpers
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
+import android.support.v4.app.FragmentActivity
 
 /** Helper class for managing on-device storage of cloud anchor IDs.  */
 class StorageManager {
 
     /** Gets a new short code that can be used to store the anchor ID.  */
-    fun nextShortCode(activity: Activity): Int {
+    fun nextShortCode(activity: FragmentActivity?): Int {
+        if (activity == null) {
+            return  -1
+        }
         val sharedPrefs = activity.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
         val shortCode = sharedPrefs.getInt(NEXT_SHORT_CODE, INITIAL_SHORT_CODE)
         sharedPrefs.edit().putInt(NEXT_SHORT_CODE, shortCode + 1).apply()
@@ -32,7 +36,11 @@ class StorageManager {
     }
 
     /** Stores the cloud anchor ID in the activity's SharedPrefernces.  */
-    fun storeUsingShortCode(activity: Activity, shortCode: Int, cloudAnchorId: String) {
+    fun storeUsingShortCode(activity: FragmentActivity?, shortCode: Int, cloudAnchorId: String) {
+        if (activity == null) {
+            return
+        }
+
         val sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE)
         sharedPrefs.edit().putString(KEY_PREFIX + shortCode, cloudAnchorId).apply()
     }
@@ -41,7 +49,11 @@ class StorageManager {
      * Retrieves the cloud anchor ID using a short code. Returns an empty string if a cloud anchor ID
      * was not stored for this short code.
      */
-    fun getCloudAnchorId(activity: Activity, shortCode: Int): String? {
+    fun getCloudAnchorId(activity: FragmentActivity?, shortCode: Int): String? {
+        if (activity == null) {
+            return null
+        }
+
         val sharedPrefs = activity.getPreferences(Context.MODE_PRIVATE)
         return sharedPrefs.getString(KEY_PREFIX + shortCode, "")
     }
